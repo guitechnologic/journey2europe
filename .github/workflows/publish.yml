@@ -1,0 +1,26 @@
+name: Publish Blog Post
+
+on:
+  push:
+    paths:
+      - content/drafts/current.mdx
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: node scripts/publish-post.js
+
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add content/posts
+          git commit -m "blog: new post" || echo "nothing to commit"
+          git push
