@@ -1,0 +1,25 @@
+.cv {
+  display: grid;
+  grid-template-columns: 30% 70%;
+  min-height: 1123px; /* A4 */
+  font-family: Arial, Helvetica, sans-serif;
+  border: 1px solid #ccc;
+}
+
+.cv-left {
+  background: #f2f2f2;
+  padding: 24px;
+}
+
+.cv-right {
+  padding: 24px;
+}
+
+h2 {
+  margin-bottom: 8px;
+}
+
+h3 {
+  margin-top: 24px;
+  border-bottom: 1px solid #000;
+}

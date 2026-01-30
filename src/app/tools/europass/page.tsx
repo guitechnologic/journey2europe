@@ -1,20 +1,48 @@
-export default function HomePage() {
+"use client";
+
+import { useState } from "react";
+import { EuropassCV } from "@/lib/europass-types";
+import PersonalDataForm from "./PersonalDataForm";
+import EuropassPreview from "./EuropassPreview";
+
+const initialCV: EuropassCV = {
+  personal: {
+    firstName: "",
+    lastName: "",
+    headline: "",
+    showHeadline: true,
+    email: "",
+    phone: "",
+    address: "",
+    postalCode: "",
+    city: "",
+    state: "",
+    country: "",
+
+    birthDate: { enabled: false, value: "" },
+    naturality: { enabled: false, value: "" },
+    gender: { enabled: false, value: "" },
+    nationality: { enabled: false, value: "" },
+    maritalStatus: { enabled: false, value: "" },
+    website: { enabled: false, value: "" },
+    linkedin: { enabled: false, value: "" },
+    github: { enabled: false, value: "" },
+    custom: { enabled: false, value: "" },
+  },
+};
+
+export default function EuropassPage() {
+  const [cv, setCv] = useState<EuropassCV>(initialCV);
+
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-4xl font-bold mb-4">
-        Journey to Europe 🇪🇺
-      </h1>
+    <main className="min-h-screen grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+      <div className="bg-white rounded p-4 shadow">
+        <PersonalDataForm cv={cv} setCv={setCv} />
+      </div>
 
-      <p className="text-lg mb-6">
-        Um blog sobre DevOps, carreira e a jornada rumo a Europa.
-      </p>
-
-      <a
-        href="/tools/europass"
-        className="text-blue-600 underline"
-      >
-        👉 Gerador gratuito de curriculo Europass
-      </a>
+      <div className="bg-gray-50 rounded p-4 shadow">
+        <EuropassPreview cv={cv} />
+      </div>
     </main>
   );
 }

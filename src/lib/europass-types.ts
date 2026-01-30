@@ -1,22 +1,37 @@
-export interface Experience {
-  role: string;
-  company: string;
-  startDate: string;
-  endDate: string;
-  description: string;
+export interface OptionalField {
+  enabled: boolean;
+  value: string;
 }
 
-export interface Education {
-  course: string;
-  institution: string;
-  year: string;
+export interface PersonalData {
+  firstName: string;
+  lastName: string;
+
+  headline: string;
+  showHeadline: boolean;
+
+  email: string;
+  phone: string;
+
+  address: string;
+  postalCode: string;
+  city: string;
+  state: string;
+  country: string;
+
+  photo?: string;
+
+  birthDate: OptionalField;
+  naturality: OptionalField;
+  gender: OptionalField;
+  nationality: OptionalField;
+  maritalStatus: OptionalField;
+  website: OptionalField;
+  linkedin: OptionalField;
+  github: OptionalField;
+  custom: OptionalField;
 }
 
 export interface EuropassCV {
-  fullName: string;
-  email: string;
-  location: string;
-  experiences: Experience[];
-  education: Education[];
-  skills: string;
+  personal: PersonalData;
 }
