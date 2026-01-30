@@ -6,7 +6,7 @@ export function generateEuropassHTML(data: EuropassCV): string {
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  < title>Currículo Europass</title>
+  <title>Curriculo Europass</title>
   <style>
     body {
       font-family: Arial, Helvetica, sans-serif;
@@ -39,7 +39,7 @@ export function generateEuropassHTML(data: EuropassCV): string {
   <p>${data.location} | ${data.email}</p>
 
   <div class="section">
-    <h2>Experiência Profissional</h2>
+    <h2>Experiencia Profissional</h2>
     ${data.experiences
       .map(
         (exp) => `
@@ -54,7 +54,7 @@ export function generateEuropassHTML(data: EuropassCV): string {
   </div>
 
   <div class="section">
-    <h2>Formação</h2>
+    <h2>Formacao</h2>
     ${data.education
       .map(
         (edu) => `
@@ -68,7 +68,7 @@ export function generateEuropassHTML(data: EuropassCV): string {
   </div>
 
   <div class="section">
-    <h2>Competências</h2>
+    <h2>Competencias</h2>
     <p>${data.skills}</p>
   </div>
 
