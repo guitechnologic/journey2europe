@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../storage/local_storage.dart';
 import '../../models/document_model.dart';
-import '../passport/passport_form.dart';
+import '../add_document/add_document_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,49 +13,54 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final passports = LocalStorage.getByType(DocumentType.passport);
+    final docs = LocalStorage.getAll();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Meus Documentos'),
         centerTitle: true,
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PassportFormScreen()),
+          await showModalBottomSheet(
+            context: context,
+            builder: (_) => const AddDocumentModal(),
           );
           setState(() {});
         },
         child: const Icon(Icons.add),
       ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            if (passports.isNotEmpty)
-              _documentCard(
-                context,
-                title: 'Passaportes',
-                count: passports.length,
+      body: docs.isEmpty
+          ? const Center(
+              child: Text(
+                'Nenhum documento cadastrado',
+                style: TextStyle(fontSize: 16),
               ),
-          ],
-        ),
-      ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: ListView(
+                children: DocumentType.values.map((type) {
+                  final count =
+                      LocalStorage.getByType(type).length;
+                  if (count == 0) return const SizedBox();
+                  return _documentCard(
+                    title: type.name.toUpperCase(),
+                    count: count,
+                  );
+                }).toList(),
+              ),
+            ),
     );
   }
 
-  Widget _documentCard(BuildContext context,
-      {required String title, required int count}) {
+  Widget _documentCard({required String title, required int count}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Colors.blue.shade50,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

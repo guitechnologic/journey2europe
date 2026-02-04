@@ -7,6 +7,7 @@ class DocumentModel {
   final String holderName;
   final DateTime issueDate;
   final DateTime expiryDate;
+  String filePath; // pode ser atualizado
   final Map<String, String> extra;
 
   DocumentModel({
@@ -16,6 +17,7 @@ class DocumentModel {
     required this.holderName,
     required this.issueDate,
     required this.expiryDate,
+    required this.filePath,
     required this.extra,
   });
 
