@@ -7,11 +7,10 @@ class LocalStorage {
 
   static Future<List<DocumentModel>> getAll() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw == null) return [];
-
-    final list = jsonDecode(raw) as List;
-    return list.map((e) => DocumentModel.fromJson(e)).toList();
+    final data = prefs.getString(_key);
+    if (data == null) return []; // lista vazia se não houver docs
+    final List<dynamic> jsonList = jsonDecode(data);
+    return jsonList.map((e) => DocumentModel.fromJson(e)).toList();
   }
 
   static Future<void> save(DocumentModel doc) async {
@@ -20,34 +19,20 @@ class LocalStorage {
 
     final index = docs.indexWhere((d) => d.id == doc.id);
     if (index >= 0) {
-      docs[index] = doc;
+      docs[index] = doc; // atualiza existente
     } else {
-      docs.add(doc);
+      docs.add(doc); // adiciona novo
     }
 
-    await prefs.setString(
-      _key,
-      jsonEncode(docs.map((e) => e.toJson()).toList()),
-    );
+    final jsonList = docs.map((d) => d.toJson()).toList();
+    await prefs.setString(_key, jsonEncode(jsonList));
   }
 
   static Future<void> delete(String id) async {
     final prefs = await SharedPreferences.getInstance();
-    final docs = await getAll()
-      ..removeWhere((d) => d.id == id);
-
-    await prefs.setString(
-      _key,
-      jsonEncode(docs.map((e) => e.toJson()).toList()),
-    );
-  }
-
-  static Future<DocumentModel?> getById(String id) async {
     final docs = await getAll();
-    try {
-      return docs.firstWhere((d) => d.id == id);
-    } catch (_) {
-      return null;
-    }
+    docs.removeWhere((d) => d.id == id);
+    final jsonList = docs.map((d) => d.toJson()).toList();
+    await prefs.setString(_key, jsonEncode(jsonList));
   }
 }

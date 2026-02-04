@@ -30,17 +30,15 @@ class _NifFormScreenState extends State<NifFormScreen> {
 
   String? sexo;
 
-  /// Capitaliza a primeira letra de cada palavra
+  /// Capitaliza primeira letra de cada palavra, mantendo espaços
   String _capitalizeWords(String text) {
     return text
-        .trim()
+        .trimLeft()
         .split(' ')
-        .map((w) =>
-            w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
         .join(' ');
   }
 
-  /// Abre date picker
   Future<void> _pickDate(TextEditingController ctrl, bool isExpiry) async {
     final date = await showDatePicker(
       context: context,
@@ -59,11 +57,8 @@ class _NifFormScreenState extends State<NifFormScreen> {
     }
   }
 
-  /// Salva o documento
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() ||
-        nascimento == null ||
-        validade == null) {
+    if (!_formKey.currentState!.validate() || nascimento == null || validade == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preencha todos os campos obrigatórios')),
       );
@@ -88,7 +83,7 @@ class _NifFormScreenState extends State<NifFormScreen> {
       ),
     );
 
-    Navigator.pop(context, true); // Retorna true para atualizar HomeScreen
+    Navigator.pop(context, true); // Retorna true para atualizar a HomeScreen imediatamente
   }
 
   @override
@@ -101,19 +96,14 @@ class _NifFormScreenState extends State<NifFormScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _field(nomeCtrl, 'Nome'),
+              _field(nomeCtrl, 'Nome', capitalize: true),
               _sexoDropdown(),
               _dateField(nascimentoCtrl, 'Data de nascimento', false),
               _dateField(validadeCtrl, 'Data de validade', true),
               _numberField(ccCtrl, 'Nº Cartão do Cidadão', 12),
               _numberField(nifCtrl, 'NIF (9 dígitos)', 9),
               _numberField(snsCtrl, 'Nº SNS (9 dígitos)', 9),
-              _numberField(
-                nissCtrl,
-                'Nº Segurança Social (opcional)',
-                11,
-                required: false,
-              ),
+              _numberField(nissCtrl, 'Nº Segurança Social (opcional)', 11, required: false),
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
@@ -129,19 +119,30 @@ class _NifFormScreenState extends State<NifFormScreen> {
     );
   }
 
-  Widget _field(TextEditingController c, String label) {
+  Widget _field(TextEditingController c, String label, {bool capitalize = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: c,
+        onChanged: capitalize
+            ? (v) {
+                final sel = c.selection;
+                final newText = _capitalizeWords(v);
+                c.value = TextEditingValue(
+                  text: newText,
+                  selection: TextSelection.collapsed(
+                    offset: sel.baseOffset.clamp(0, newText.length),
+                  ),
+                );
+              }
+            : null,
         decoration: InputDecoration(labelText: label),
         validator: (v) => v == null || v.isEmpty ? 'Campo obrigatório' : null,
       ),
     );
   }
 
-  Widget _numberField(TextEditingController c, String label, int max,
-      {bool required = true}) {
+  Widget _numberField(TextEditingController c, String label, int max, {bool required = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -151,9 +152,7 @@ class _NifFormScreenState extends State<NifFormScreen> {
         decoration: InputDecoration(labelText: label, counterText: ''),
         validator: (v) {
           if (!required && (v == null || v.isEmpty)) return null;
-          if (v == null || v.length != max) {
-            return 'Deve conter $max dígitos';
-          }
+          if (v == null || v.length != max) return 'Deve conter $max dígitos';
           return null;
         },
       ),
@@ -182,10 +181,7 @@ class _NifFormScreenState extends State<NifFormScreen> {
         items: const [
           DropdownMenuItem(value: 'Masculino', child: Text('Masculino')),
           DropdownMenuItem(value: 'Feminino', child: Text('Feminino')),
-          DropdownMenuItem(
-            value: 'Prefiro não declarar',
-            child: Text('Prefiro não declarar'),
-          ),
+          DropdownMenuItem(value: 'Prefiro não declarar', child: Text('Prefiro não declarar')),
         ],
         onChanged: (v) => setState(() => sexo = v),
       ),

@@ -48,12 +48,12 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
     }
   }
 
+  /// Capitaliza primeira letra de cada palavra, mantendo espaços
   String _capitalizeWords(String text) {
     return text
-        .trim()
+        .trimLeft()
         .split(' ')
-        .map((w) =>
-            w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
         .join(' ');
   }
 
@@ -63,15 +63,10 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         type: FileType.custom,
         allowedExtensions: ['pdf'],
       );
-      if (result != null) {
-        setState(() => file = File(result.files.single.path!));
-      }
+      if (result != null) setState(() => file = File(result.files.single.path!));
     } else {
-      final img = await ImagePicker()
-          .pickImage(source: ImageSource.camera, imageQuality: 80);
-      if (img != null) {
-        setState(() => file = File(img.path));
-      }
+      final img = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 80);
+      if (img != null) setState(() => file = File(img.path));
     }
   }
 
@@ -80,10 +75,7 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
     emissao = _parseDate(emissaoCtrl.text);
     vencimento = _parseDate(vencimentoCtrl.text);
 
-    if (!_formKey.currentState!.validate() ||
-        nascimento == null ||
-        emissao == null ||
-        vencimento == null) {
+    if (!_formKey.currentState!.validate() || nascimento == null || emissao == null || vencimento == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preencha todos os campos obrigatórios')),
       );
@@ -93,8 +85,8 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
     final extra = {
       'registro': registroCtrl.text,
       'categoria': categoriaCtrl.text,
-      'pais': _capitalizeWords(paisCtrl.text),
-      'localNascimento': _capitalizeWords(localNascimentoCtrl.text),
+      'pais': paisCtrl.text,
+      'localNascimento': localNascimentoCtrl.text,
       'dataNascimento': nascimento!.toIso8601String(),
     };
 
@@ -113,7 +105,7 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
       ),
     );
 
-    Navigator.pop(context, true); // retorna true para atualizar HomeScreen
+    Navigator.pop(context, true); // HomeScreen atualiza imediatamente
   }
 
   @override
@@ -126,26 +118,20 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _field(nomeCtrl, 'Nome'),
+              _field(nomeCtrl, 'Nome', capitalize: true),
               _dateField(nascimentoCtrl, 'Data de nascimento'),
               _dateField(emissaoCtrl, 'Data de emissão'),
               _dateField(vencimentoCtrl, 'Data de vencimento'),
               _field(registroCtrl, 'Nº de registro'),
               _field(categoriaCtrl, 'Categoria'),
-              _field(
-                paisCtrl,
-                'País emissor',
-                onChanged: (_) => setState(() {}),
-              ),
+              _field(paisCtrl, 'País emissor', capitalize: true),
               if (isBrasil) _field(cpfCtrl, 'CPF'),
-              _field(localNascimentoCtrl, 'Local de nascimento'),
+              _field(localNascimentoCtrl, 'Local de nascimento', capitalize: true),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _pickMedia,
                 icon: const Icon(Icons.attach_file),
-                label: Text(
-                  isBrasil ? 'Importar CNH (PDF)' : 'Tirar foto da CNH',
-                ),
+                label: Text(isBrasil ? 'Importar CNH (PDF)' : 'Tirar foto da CNH'),
               ),
               const SizedBox(height: 30),
               SizedBox(
@@ -162,12 +148,23 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
     );
   }
 
-  Widget _field(TextEditingController c, String label, {void Function(String)? onChanged}) {
+  Widget _field(TextEditingController c, String label, {bool capitalize = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: c,
-        onChanged: onChanged,
+        onChanged: capitalize
+            ? (v) {
+                final sel = c.selection;
+                final newText = _capitalizeWords(v);
+                c.value = TextEditingValue(
+                  text: newText,
+                  selection: TextSelection.collapsed(
+                    offset: sel.baseOffset.clamp(0, newText.length),
+                  ),
+                );
+              }
+            : null,
         decoration: InputDecoration(labelText: label),
         validator: (v) => v == null || v.isEmpty ? 'Campo obrigatório' : null,
       ),

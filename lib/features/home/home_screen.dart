@@ -1,3 +1,5 @@
+// lib/features/home/home_screen.dart
+
 import 'package:flutter/material.dart';
 import '../../models/document_model.dart';
 import '../../storage/local_storage.dart';
@@ -28,28 +30,47 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => documents = docs);
   }
 
-  /// Abrir formulário para novo documento ou editar existente
-  void _openDocumentForm({DocumentModel? doc}) async {
-    Widget screen;
+  void _openDocumentForm({DocumentModel? doc, DocumentType? type}) async {
+    await _navigateToForm(doc: doc, type: type);
+    final docs = await LocalStorage.getAll(); // garante lista atualizada
+    setState(() => documents = docs);
+  }
 
+  Future<void> _navigateToForm({DocumentModel? doc, DocumentType? type}) async {
     if (doc != null) {
-      // Editando documento existente
-      if (doc.type == DocumentType.passport) {
-        screen = PassportFormScreen(document: doc);
-      } else if (doc.type == DocumentType.cnh) {
-        screen = CnhFormScreen();
-      } else if (doc.type == DocumentType.nif) {
-        screen = NifFormScreen();
-      } else {
-        return;
+      switch (doc.type) {
+        case DocumentType.passport:
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => PassportFormScreen(document: doc)),
+          );
+          break;
+        case DocumentType.cnh:
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => CnhFormScreen()),
+          );
+          break;
+        case DocumentType.nif:
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => NifFormScreen()),
+          );
+          break;
       }
-
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => screen),
-      );
+    } else if (type != null) {
+      switch (type) {
+        case DocumentType.passport:
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => PassportFormScreen()));
+          break;
+        case DocumentType.cnh:
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => CnhFormScreen()));
+          break;
+        case DocumentType.nif:
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => NifFormScreen()));
+          break;
+      }
     } else {
-      // Adicionando novo documento
       await showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -59,8 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => const AddDocumentBottomSheet(),
       );
     }
-
-    _loadDocuments();
   }
 
   Future<void> _deleteDocument(DocumentModel doc) async {
@@ -70,14 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Excluir documento'),
         content: Text('Deseja realmente excluir "${doc.title}"?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Excluir')),
         ],
       ),
     );
@@ -95,38 +108,28 @@ class _HomeScreenState extends State<HomeScreen> {
       body: documents.isEmpty
           ? _EmptyState(onAdd: () => _openDocumentForm())
           : Padding(
-              padding: const EdgeInsets.only(bottom: 80), // espaço para FAB
+              padding: const EdgeInsets.only(bottom: 80),
               child: ListView.builder(
                 itemCount: documents.length,
                 itemBuilder: (_, i) {
                   final doc = documents[i];
-
                   Color? color;
-                  if (doc.daysToExpire <= 7) {
-                    color = Colors.red.withOpacity(0.1);
-                  } else if (doc.daysToExpire <= 30) {
-                    color = Colors.amber.withOpacity(0.15);
-                  }
+                  if (doc.daysToExpire <= 7) color = Colors.red.withOpacity(0.1);
+                  else if (doc.daysToExpire <= 30) color = Colors.amber.withOpacity(0.15);
 
                   return Container(
                     color: color,
                     child: ListTile(
                       title: Text(doc.title),
-                      subtitle: Text(
-                          '${doc.shortName} • vence em ${doc.daysToExpire} dias'),
+                      subtitle: Text('${doc.shortName} • vence em ${doc.daysToExpire} dias'),
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => DocumentDetailScreen(doc: doc),
-                        ),
+                        MaterialPageRoute(builder: (_) => DocumentDetailScreen(doc: doc)),
                       ),
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
-                          if (value == 'edit') {
-                            _openDocumentForm(doc: doc);
-                          } else if (value == 'delete') {
-                            _deleteDocument(doc);
-                          }
+                          if (value == 'edit') _openDocumentForm(doc: doc);
+                          else if (value == 'delete') _deleteDocument(doc);
                         },
                         itemBuilder: (_) => const [
                           PopupMenuItem(value: 'edit', child: Text('Editar')),
@@ -148,7 +151,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Tela inicial vazia (nenhum documento)
 class _EmptyState extends StatelessWidget {
   final VoidCallback onAdd;
   const _EmptyState({required this.onAdd});
@@ -156,20 +158,11 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FloatingActionButton.large(
-            onPressed: onAdd,
-            child: const Icon(Icons.add, size: 36),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Clique aqui para adicionar seu documento',
-            style: TextStyle(fontSize: 16),
-          ),
-        ],
-      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        FloatingActionButton.large(onPressed: onAdd, child: const Icon(Icons.add, size: 36)),
+        const SizedBox(height: 16),
+        const Text('Clique aqui para adicionar seu documento', style: TextStyle(fontSize: 16)),
+      ]),
     );
   }
 }
