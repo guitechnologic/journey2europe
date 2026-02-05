@@ -25,3 +25,5 @@ class Journey2EuropeApp extends StatelessWidget {
     );
   }
 }
+
+// Rodar no android studio= flutter emulators --launch Medium_Phone_API_36.1
