@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(title: const Text('Meus Documentos')),
       body: Stack(
         children: [
-          // 🔹 Background image
+          // Background image
           Positioned.fill(
             child: Opacity(
               opacity: 0.18,
@@ -141,11 +141,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 🔹 Conteúdo
+          // Conteúdo
           loading
               ? const Center(child: CircularProgressIndicator())
               : documents.isEmpty
-                  ? const SizedBox.shrink()
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.folder_open, size: 80, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Nenhum documento adicionado',
+                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    )
                   : Padding(
                       padding: const EdgeInsets.only(bottom: 120),
                       child: ListView.builder(
@@ -170,8 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      DocumentDetailScreen(doc: doc),
+                                  builder: (_) => DocumentDetailScreen(doc: doc),
                                 ),
                               ),
                               trailing: PopupMenuButton<String>(

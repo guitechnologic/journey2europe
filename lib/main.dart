@@ -40,23 +40,6 @@ Future<void> main() async {
     ),
   );
 
-  // ============================================================
-  // 🔴 BLOCO DE TESTE MANUAL (REMOVER EM PRODUÇÃO)
-  // ------------------------------------------------------------
-  // • Executa IMEDIATAMENTE após abrir o app
-  // • Útil para validar:
-  //   - cálculo de datas
-  //   - lógica de 30 / 7 dias
-  //   - disparo de notificação push
-  // • Funciona mesmo fechando o app logo depois
-  // ============================================================
-  await Workmanager().registerOneOffTask(
-    'test-now', // ID interno (qualquer string)
-    'documentExpiryCheck', // mesma task da produção
-  );
-  // ============================================================
-  // 🔴 FIM DO BLOCO DE TESTE
-  // ============================================================
 
   runApp(const Journey2EuropeApp());
 }

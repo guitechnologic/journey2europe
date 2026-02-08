@@ -44,7 +44,6 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
   bool get isEditing => widget.document != null;
   bool get isBrasil => localEmissao == 'Brasil';
 
-  /// Categorias com descrição
   final Map<String, String> categoriasBrasil = {
     'ACC': 'Ciclomotores',
     'A': 'Motocicletas',
@@ -75,7 +74,6 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
 
     if (isEditing) {
       final doc = widget.document!;
-
       nomeCtrl.text = doc.holderName;
 
       nascimento = DateTime.parse(doc.extra['dataNascimento']);
@@ -96,6 +94,14 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         file = File(doc.imagePath!);
       }
     }
+
+    cpfCtrl.addListener(_maskCpf);
+  }
+
+  @override
+  void dispose() {
+    cpfCtrl.removeListener(_maskCpf);
+    super.dispose();
   }
 
   String _fmt(DateTime d) => DateFormat('dd/MM/yyyy').format(d);
@@ -106,6 +112,15 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
     } catch (_) {
       return null;
     }
+  }
+
+  int _idadeNaData(DateTime nascimento, DateTime data) {
+    int idade = data.year - nascimento.year;
+    if (data.month < nascimento.month ||
+        (data.month == nascimento.month && data.day < nascimento.day)) {
+      idade--;
+    }
+    return idade;
   }
 
   String _capitalizeWords(String text) {
@@ -120,23 +135,52 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         .join(' ');
   }
 
+  /// Corrige máscara do CPF sem inverter números
+  void _maskCpf() {
+    final text = cpfCtrl.text;
+    final digits = text.replaceAll(RegExp(r'\D'), '');
+    String formatted = '';
+
+    for (int i = 0; i < digits.length && i < 11; i++) {
+      formatted += digits[i];
+      if (i == 2 || i == 5) formatted += '.';
+      if (i == 8) formatted += '-';
+    }
+
+    // Calcula a posição do cursor corretamente
+    int baseOffset = cpfCtrl.selection.baseOffset;
+
+    // Contagem de caracteres não numéricos antes do cursor
+    int nonDigitsBeforeCursor = 0;
+    for (int i = 0; i < baseOffset && i < text.length; i++) {
+      if (!RegExp(r'\d').hasMatch(text[i])) nonDigitsBeforeCursor++;
+    }
+
+    int cursorPos = baseOffset + (formatted.length - digits.length - nonDigitsBeforeCursor);
+    if (cursorPos > formatted.length) cursorPos = formatted.length;
+    if (cursorPos < 0) cursorPos = 0;
+
+    if (formatted != text) {
+      cpfCtrl.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: cursorPos),
+      );
+    }
+  }
+
   Future<void> _pickMedia() async {
     if (isBrasil) {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
       );
-      if (result != null) {
-        setState(() => file = File(result.files.single.path!));
-      }
+      if (result != null) setState(() => file = File(result.files.single.path!));
     } else {
       final img = await ImagePicker().pickImage(
         source: ImageSource.camera,
         imageQuality: 80,
       );
-      if (img != null) {
-        setState(() => file = File(img.path));
-      }
+      if (img != null) setState(() => file = File(img.path));
     }
   }
 
@@ -157,6 +201,16 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
       return;
     }
 
+    final idadeNaEmissao = _idadeNaData(nascimento!, emissao!);
+    if (idadeNaEmissao < 18) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('O titular deve ter no mínimo 18 anos na data de emissão')),
+      );
+      return;
+    }
+
     final extra = {
       'registro': registroCtrl.text,
       'categoria': categoria,
@@ -164,14 +218,10 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
       'dataNascimento': nascimento!.toIso8601String(),
     };
 
-    if (isBrasil) {
-      extra['cpf'] = cpfCtrl.text;
-    }
+    if (isBrasil) extra['cpf'] = cpfCtrl.text;
 
     final doc = DocumentModel(
-      id: isEditing
-          ? widget.document!.id
-          : Random().nextInt(999999).toString(),
+      id: isEditing ? widget.document!.id : Random().nextInt(999999).toString(),
       type: DocumentType.cnh,
       title: 'CNH',
       holderName: _capitalizeWords(nomeCtrl.text),
@@ -200,30 +250,22 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
           child: Column(
             children: [
               _field(nomeCtrl, 'Nome', capitalize: true),
-
               _dateField(nascimentoCtrl, 'Data de nascimento'),
               _dateField(emissaoCtrl, 'Data de emissão'),
               _dateField(vencimentoCtrl, 'Data de vencimento'),
-
-              /// REGISTRO
               _field(
                 registroCtrl,
                 'Nº de registro',
                 inputFormatters: [
                   isBrasil
                       ? FilteringTextInputFormatter.digitsOnly
-                      : FilteringTextInputFormatter.allow(
-                          RegExp(r'[a-zA-Z0-9]'),
-                        ),
+                      : FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
                 ],
-                keyboardType:
-                    isBrasil ? TextInputType.number : TextInputType.text,
+                keyboardType: isBrasil ? TextInputType.number : TextInputType.text,
               ),
-
               DropdownButtonFormField<String>(
                 value: localEmissao,
-                decoration:
-                    const InputDecoration(labelText: 'Local de emissão'),
+                decoration: const InputDecoration(labelText: 'Local de emissão'),
                 items: const [
                   DropdownMenuItem(value: 'Brasil', child: Text('Brasil')),
                   DropdownMenuItem(value: 'Europa', child: Text('Europa')),
@@ -232,34 +274,24 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
                   setState(() {
                     localEmissao = v;
                     categoria = null;
-                    registroCtrl.clear();
-                    cpfCtrl.clear();
+                    // Registro e CPF permanecem
                   });
                 },
                 validator: (v) => v == null ? 'Campo obrigatório' : null,
               ),
-
               const SizedBox(height: 14),
-
               DropdownButtonFormField<String>(
                 value: categoria,
-                decoration:
-                    const InputDecoration(labelText: 'Categoria da CNH'),
+                decoration: const InputDecoration(labelText: 'Categoria da CNH'),
                 items: categorias.entries
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e.key,
-                        child: Text('${e.key} — ${e.value}'),
-                      ),
-                    )
+                    .map((e) => DropdownMenuItem(
+                          value: e.key,
+                          child: Text('${e.key} — ${e.value}'),
+                        ))
                     .toList(),
-                onChanged: localEmissao == null
-                    ? null
-                    : (v) => setState(() => categoria = v),
+                onChanged: localEmissao == null ? null : (v) => setState(() => categoria = v),
                 validator: (v) => v == null ? 'Campo obrigatório' : null,
               ),
-
-              /// CPF — somente Brasil
               if (isBrasil) ...[
                 const SizedBox(height: 14),
                 _field(
@@ -271,15 +303,12 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
                   ],
                 ),
               ],
-
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _pickMedia,
                 icon: const Icon(Icons.attach_file),
-                label:
-                    Text(isBrasil ? 'Importar CNH (PDF)' : 'Tirar foto da CNH'),
+                label: Text(isBrasil ? 'Importar CNH (PDF)' : 'Tirar foto da CNH'),
               ),
-
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
@@ -315,14 +344,12 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
                 c.value = TextEditingValue(
                   text: newText,
                   selection: TextSelection.collapsed(
-                    offset: sel.baseOffset.clamp(0, newText.length),
-                  ),
+                      offset: sel.baseOffset.clamp(0, newText.length)),
                 );
               }
             : null,
         decoration: InputDecoration(labelText: label),
-        validator: (v) =>
-            v == null || v.isEmpty ? 'Campo obrigatório' : null,
+        validator: (v) => v == null || v.isEmpty ? 'Campo obrigatório' : null,
       ),
     );
   }
@@ -335,8 +362,7 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         keyboardType: TextInputType.number,
         inputFormatters: [DateInputFormatter()],
         decoration: InputDecoration(labelText: label),
-        validator: (v) =>
-            _parseDate(v ?? '') == null ? 'Data inválida' : null,
+        validator: (v) => _parseDate(v ?? '') == null ? 'Data inválida' : null,
       ),
     );
   }

@@ -38,31 +38,9 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
 
   File? photo;
 
-  final today =
-      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-
-  @override
-  void initState() {
-    super.initState();
-
-    if (widget.document != null) {
-      final doc = widget.document!;
-      nomeCtrl.text = doc.holderName;
-      numeroCtrl.text = doc.extra['numero'];
-      paisOrigemCtrl.text = doc.extra['paisOrigem'];
-      paisEmissaoCtrl.text = doc.extra['paisEmissao'];
-
-      nascimento = DateTime.parse(doc.extra['dataNascimento']);
-      emissao = doc.issueDate;
-      vencimento = doc.expiryDate;
-
-      nascimentoCtrl.text = _fmt(nascimento!);
-      emissaoCtrl.text = _fmt(emissao!);
-      vencimentoCtrl.text = _fmt(vencimento!);
-
-      if (doc.imagePath != null) photo = File(doc.imagePath!);
-    }
-  }
+  // =========================
+  // FORMATADORES / PARSE
+  // =========================
 
   String _fmt(DateTime d) => DateFormat('dd/MM/yyyy').format(d);
 
@@ -74,26 +52,77 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
     }
   }
 
-  Future<void> _pickPhoto() async {
-    final img =
-        await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 80);
-    if (img != null) setState(() => photo = File(img.path));
+  // =========================
+  // REGRAS LEGAIS
+  // =========================
+
+  int _idadeNaData(DateTime nascimento, DateTime data) {
+    int idade = data.year - nascimento.year;
+    if (data.month < nascimento.month ||
+        (data.month == nascimento.month && data.day < nascimento.day)) {
+      idade--;
+    }
+    return idade;
   }
+
+  DateTime _calcularVencimento(DateTime emissao, DateTime nascimento) {
+    final idade = _idadeNaData(nascimento, emissao);
+    final anos = idade < 18 ? 5 : 10;
+
+    return DateTime(
+      emissao.year + anos,
+      emissao.month,
+      emissao.day,
+    ).subtract(const Duration(days: 1));
+  }
+
+  // =========================
+  // TEXTO / CAPITALIZAÇÃO
+  // =========================
 
   String _capitalizeWords(String text) {
     return text
-        .trimLeft()
         .split(' ')
-        .map((w) =>
-            w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .map((word) {
+          if (word.isEmpty) return '';
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
         .join(' ');
   }
 
+  // =========================
+  // FOTO
+  // =========================
+
+  Future<void> _pickPhoto() async {
+    final img = await ImagePicker()
+        .pickImage(source: ImageSource.camera, imageQuality: 80);
+    if (img != null) {
+      setState(() => photo = File(img.path));
+    }
+  }
+
+  // =========================
+  // SALVAR
+  // =========================
+
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() ||
-        nascimento == null ||
-        emissao == null ||
-        vencimento == null) return;
+    if (!_formKey.currentState!.validate()) return;
+    if (nascimento == null || emissao == null || vencimento == null) return;
+
+    final vencimentoMaximo =
+        _calcularVencimento(emissao!, nascimento!);
+
+    if (vencimento!.isAfter(vencimentoMaximo)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'A validade do passaporte excede o permitido por lei.',
+          ),
+        ),
+      );
+      return;
+    }
 
     final firstName = nomeCtrl.text.trim().split(' ').first;
 
@@ -117,43 +146,78 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
     Navigator.pop(context, true);
   }
 
+  // =========================
+  // UI
+  // =========================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          AppBar(title: Text(widget.document == null ? 'Novo Passaporte' : 'Editar Passaporte')),
+      appBar: AppBar(
+        title: Text(
+          widget.document == null
+              ? 'Novo Passaporte'
+              : 'Editar Passaporte',
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              _field(nomeCtrl, 'Nome completo', capitalize: true),
+              _field(
+                nomeCtrl,
+                'Nome completo',
+                capitalize: true,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r"[a-zA-ZÀ-ÿ\s]"),
+                  ),
+                ],
+              ),
 
-              _date(nascimentoCtrl, 'Data de nascimento',
-                  (v) => nascimento = _parse(v)),
+              _date(nascimentoCtrl, 'Data de nascimento', (v) {
+                nascimento = _parse(v);
+              }),
 
-              _date(emissaoCtrl, 'Data de emissão',
-                  (v) => emissao = _parse(v)),
+              _date(emissaoCtrl, 'Data de emissão', (v) {
+                emissao = _parse(v);
+                if (emissao != null && nascimento != null) {
+                  vencimento =
+                      _calcularVencimento(emissao!, nascimento!);
+                  vencimentoCtrl.text = _fmt(vencimento!);
+                }
+              }),
 
-              _date(vencimentoCtrl, 'Data de vencimento',
-                  (v) => vencimento = _parse(v)),
+              _date(vencimentoCtrl, 'Data de vencimento', (v) {
+                vencimento = _parse(v);
+              }),
 
-              /// PASSAPORTE → ALFANUMÉRICO
               _field(
                 numeroCtrl,
                 'Número do passaporte',
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'[a-zA-Z0-9]'),
+                  ),
                 ],
               ),
 
-              _field(paisOrigemCtrl, 'País de origem', capitalize: true,
-                  onChanged: (v) {
-                paisEmissaoCtrl.text = _capitalizeWords(v);
-              }),
+              _field(
+                paisOrigemCtrl,
+                'País de origem',
+                capitalize: true,
+                onChanged: (v) {
+                  paisEmissaoCtrl.text = _capitalizeWords(v);
+                },
+              ),
 
-              _field(paisEmissaoCtrl, 'País de emissão', capitalize: true),
+              _field(
+                paisEmissaoCtrl,
+                'País de emissão',
+                capitalize: true,
+              ),
 
               const SizedBox(height: 16),
               ElevatedButton.icon(
@@ -177,6 +241,10 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
     );
   }
 
+  // =========================
+  // COMPONENTES
+  // =========================
+
   Widget _field(
     TextEditingController c,
     String label, {
@@ -195,14 +263,16 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
             final newText = _capitalizeWords(v);
             c.value = TextEditingValue(
               text: newText,
-              selection:
-                  TextSelection.collapsed(offset: sel.baseOffset.clamp(0, newText.length)),
+              selection: TextSelection.collapsed(
+                offset: sel.baseOffset.clamp(0, newText.length),
+              ),
             );
           }
           if (onChanged != null) onChanged(v);
         },
         decoration: InputDecoration(labelText: label),
-        validator: (v) => v == null || v.isEmpty ? 'Campo obrigatório' : null,
+        validator: (v) =>
+            v == null || v.trim().isEmpty ? 'Campo obrigatório' : null,
       ),
     );
   }
@@ -220,7 +290,8 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
         inputFormatters: [DateInputFormatter()],
         decoration: InputDecoration(labelText: label),
         onChanged: onChanged,
-        validator: (v) => _parse(v ?? '') == null ? 'Data inválida' : null,
+        validator: (v) =>
+            _parse(v ?? '') == null ? 'Data inválida' : null,
       ),
     );
   }
