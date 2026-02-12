@@ -120,13 +120,13 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
   // TEXTO
   // =========================
 
+  /// Capitaliza corretamente nomes com espaços, preservando acentos
   String _capitalizeWords(String text) {
-    return text
-        .trim()
-        .split(' ')
-        .map((w) =>
-            w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
-        .join(' ');
+    return text.replaceAll(RegExp(r'\s+'), ' ').splitMapJoin(
+      RegExp(r'\b\w'),
+      onMatch: (m) => m.group(0)!.toUpperCase(),
+      onNonMatch: (n) => n.toLowerCase(),
+    );
   }
 
   // =========================
@@ -149,8 +149,7 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (nascimento == null || emissao == null || vencimento == null) return;
 
-    final vencimentoMaximo =
-        _calcularVencimento(emissao!, nascimento!);
+    final vencimentoMaximo = _calcularVencimento(emissao!, nascimento!);
 
     if (vencimento!.isAfter(vencimentoMaximo)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -194,9 +193,7 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.document == null
-              ? 'Novo Passaporte'
-              : 'Editar Passaporte',
+          widget.document == null ? 'Novo Passaporte' : 'Editar Passaporte',
         ),
       ),
       body: SingleChildScrollView(
