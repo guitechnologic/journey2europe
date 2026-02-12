@@ -134,9 +134,9 @@ class _NifFormScreenState extends State<NifFormScreen> {
               _dateField(nascimentoCtrl, 'Data de nascimento'),
               _dateField(validadeCtrl, 'Data de validade'),
               _numberField(ccCtrl, 'Nº Cartão do Cidadão', 12),
-              _numberField(nifCtrl, 'NIF (9 dígitos)', 9),
-              _numberField(snsCtrl, 'Nº SNS (9 dígitos)', 9),
-              _numberField(nissCtrl, 'Nº Segurança Social (opcional)', 11, required: false),
+              _numberField(nifCtrl, 'NIF (N° de Identificação Fiscal)', 9),
+              _numberField(snsCtrl, 'Nº SNS (Seguro Nacional de Saúde)', 9),
+              _numberField(nissCtrl, 'Nº Segurança Social', 11, required: false),
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,

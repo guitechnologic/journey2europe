@@ -41,6 +41,8 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
   String? localEmissao; // Brasil | Europa
   String? categoria;
 
+  String _lastCpfText = '';
+
   bool get isEditing => widget.document != null;
   bool get isBrasil => localEmissao == 'Brasil';
 
@@ -95,6 +97,7 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
       }
     }
 
+    _lastCpfText = cpfCtrl.text;
     cpfCtrl.addListener(_maskCpf);
   }
 
@@ -135,9 +138,16 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         .join(' ');
   }
 
-  /// Corrige máscara do CPF sem inverter números
+  /// Máscara de CPF corrigida (permite apagar normalmente)
   void _maskCpf() {
     final text = cpfCtrl.text;
+
+    // Se está apagando, não força máscara
+    if (text.length < _lastCpfText.length) {
+      _lastCpfText = text;
+      return;
+    }
+
     final digits = text.replaceAll(RegExp(r'\D'), '');
     String formatted = '';
 
@@ -147,25 +157,14 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
       if (i == 8) formatted += '-';
     }
 
-    // Calcula a posição do cursor corretamente
-    int baseOffset = cpfCtrl.selection.baseOffset;
-
-    // Contagem de caracteres não numéricos antes do cursor
-    int nonDigitsBeforeCursor = 0;
-    for (int i = 0; i < baseOffset && i < text.length; i++) {
-      if (!RegExp(r'\d').hasMatch(text[i])) nonDigitsBeforeCursor++;
-    }
-
-    int cursorPos = baseOffset + (formatted.length - digits.length - nonDigitsBeforeCursor);
-    if (cursorPos > formatted.length) cursorPos = formatted.length;
-    if (cursorPos < 0) cursorPos = 0;
-
     if (formatted != text) {
       cpfCtrl.value = TextEditingValue(
         text: formatted,
-        selection: TextSelection.collapsed(offset: cursorPos),
+        selection: TextSelection.collapsed(offset: formatted.length),
       );
     }
+
+    _lastCpfText = cpfCtrl.text;
   }
 
   Future<void> _pickMedia() async {
@@ -174,7 +173,9 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         type: FileType.custom,
         allowedExtensions: ['pdf'],
       );
-      if (result != null) setState(() => file = File(result.files.single.path!));
+      if (result != null) {
+        setState(() => file = File(result.files.single.path!));
+      }
     } else {
       final img = await ImagePicker().pickImage(
         source: ImageSource.camera,
@@ -196,7 +197,7 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         localEmissao == null ||
         categoria == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos obrigatórios')),
+        const SnackBar(content: Text('Preencha os campos obrigatórios')),
       );
       return;
     }
@@ -205,8 +206,9 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
     if (idadeNaEmissao < 18) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text('O titular deve ter no mínimo 18 anos na data de emissão')),
+          content:
+              Text('O titular deve ter no mínimo 18 anos na data de emissão'),
+        ),
       );
       return;
     }
@@ -218,7 +220,9 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
       'dataNascimento': nascimento!.toIso8601String(),
     };
 
-    if (isBrasil) extra['cpf'] = cpfCtrl.text;
+    if (isBrasil && cpfCtrl.text.isNotEmpty) {
+      extra['cpf'] = cpfCtrl.text;
+    }
 
     final doc = DocumentModel(
       id: isEditing ? widget.document!.id : Random().nextInt(999999).toString(),
@@ -253,19 +257,23 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
               _dateField(nascimentoCtrl, 'Data de nascimento'),
               _dateField(emissaoCtrl, 'Data de emissão'),
               _dateField(vencimentoCtrl, 'Data de vencimento'),
+
               _field(
                 registroCtrl,
                 'Nº de registro',
+                keyboardType:
+                    isBrasil ? TextInputType.number : TextInputType.text,
                 inputFormatters: [
                   isBrasil
                       ? FilteringTextInputFormatter.digitsOnly
                       : FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
                 ],
-                keyboardType: isBrasil ? TextInputType.number : TextInputType.text,
               ),
+
               DropdownButtonFormField<String>(
                 value: localEmissao,
-                decoration: const InputDecoration(labelText: 'Local de emissão'),
+                decoration:
+                    const InputDecoration(labelText: 'Local de emissão'),
                 items: const [
                   DropdownMenuItem(value: 'Brasil', child: Text('Brasil')),
                   DropdownMenuItem(value: 'Europa', child: Text('Europa')),
@@ -274,41 +282,46 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
                   setState(() {
                     localEmissao = v;
                     categoria = null;
-                    // Registro e CPF permanecem
                   });
                 },
                 validator: (v) => v == null ? 'Campo obrigatório' : null,
               ),
+
               const SizedBox(height: 14),
+
               DropdownButtonFormField<String>(
                 value: categoria,
-                decoration: const InputDecoration(labelText: 'Categoria da CNH'),
+                decoration:
+                    const InputDecoration(labelText: 'Categoria da CNH'),
                 items: categorias.entries
                     .map((e) => DropdownMenuItem(
                           value: e.key,
                           child: Text('${e.key} — ${e.value}'),
                         ))
                     .toList(),
-                onChanged: localEmissao == null ? null : (v) => setState(() => categoria = v),
+                onChanged:
+                    localEmissao == null ? null : (v) => setState(() => categoria = v),
                 validator: (v) => v == null ? 'Campo obrigatório' : null,
               ),
+
               if (isBrasil) ...[
                 const SizedBox(height: 14),
                 _field(
                   cpfCtrl,
                   'CPF',
                   keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
               ],
+
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _pickMedia,
                 icon: const Icon(Icons.attach_file),
-                label: Text(isBrasil ? 'Importar CNH (PDF)' : 'Tirar foto da CNH'),
+                label:
+                    Text(isBrasil ? 'Importar CNH (PDF)' : 'Tirar foto da CNH'),
               ),
+
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
@@ -344,12 +357,12 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
                 c.value = TextEditingValue(
                   text: newText,
                   selection: TextSelection.collapsed(
-                      offset: sel.baseOffset.clamp(0, newText.length)),
+                    offset: sel.baseOffset.clamp(0, newText.length),
+                  ),
                 );
               }
             : null,
         decoration: InputDecoration(labelText: label),
-        validator: (v) => v == null || v.isEmpty ? 'Campo obrigatório' : null,
       ),
     );
   }
@@ -362,7 +375,8 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
         keyboardType: TextInputType.number,
         inputFormatters: [DateInputFormatter()],
         decoration: InputDecoration(labelText: label),
-        validator: (v) => _parseDate(v ?? '') == null ? 'Data inválida' : null,
+        validator: (v) =>
+            _parseDate(v ?? '') == null ? 'Data inválida' : null,
       ),
     );
   }

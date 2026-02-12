@@ -38,6 +38,46 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
 
   File? photo;
 
+  /// Controla se o usuário editou manualmente o vencimento
+  bool vencimentoEditadoManualmente = false;
+
+  // =========================
+  // INIT (EDIÇÃO)
+  // =========================
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.document != null) {
+      final doc = widget.document!;
+
+      nomeCtrl.text = doc.holderName;
+
+      emissao = doc.issueDate;
+      vencimento = doc.expiryDate;
+
+      emissaoCtrl.text = _fmt(emissao!);
+      vencimentoCtrl.text = _fmt(vencimento!);
+
+      final nascimentoIso = doc.extra['dataNascimento'];
+      if (nascimentoIso != null) {
+        nascimento = DateTime.parse(nascimentoIso);
+        nascimentoCtrl.text = _fmt(nascimento!);
+      }
+
+      numeroCtrl.text = doc.extra['numero'] ?? '';
+      paisOrigemCtrl.text = doc.extra['paisOrigem'] ?? '';
+      paisEmissaoCtrl.text = doc.extra['paisEmissao'] ?? '';
+
+      if (doc.imagePath != null) {
+        photo = File(doc.imagePath!);
+      }
+
+      vencimentoEditadoManualmente = true;
+    }
+  }
+
   // =========================
   // FORMATADORES / PARSE
   // =========================
@@ -77,16 +117,15 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
   }
 
   // =========================
-  // TEXTO / CAPITALIZAÇÃO
+  // TEXTO
   // =========================
 
   String _capitalizeWords(String text) {
     return text
+        .trim()
         .split(' ')
-        .map((word) {
-          if (word.isEmpty) return '';
-          return word[0].toUpperCase() + word.substring(1).toLowerCase();
-        })
+        .map((w) =>
+            w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
         .join(' ');
   }
 
@@ -135,7 +174,7 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
       expiryDate: vencimento!,
       imagePath: photo?.path,
       extra: {
-        'numero': numeroCtrl.text,
+        'numero': numeroCtrl.text.toUpperCase(),
         'paisOrigem': _capitalizeWords(paisOrigemCtrl.text),
         'paisEmissao': _capitalizeWords(paisEmissaoCtrl.text),
         'dataNascimento': nascimento!.toIso8601String(),
@@ -166,16 +205,7 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _field(
-                nomeCtrl,
-                'Nome completo',
-                capitalize: true,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                    RegExp(r"[a-zA-ZÀ-ÿ\s]"),
-                  ),
-                ],
-              ),
+              _field(nomeCtrl, 'Nome completo', capitalize: true),
 
               _date(nascimentoCtrl, 'Data de nascimento', (v) {
                 nascimento = _parse(v);
@@ -183,7 +213,9 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
 
               _date(emissaoCtrl, 'Data de emissão', (v) {
                 emissao = _parse(v);
-                if (emissao != null && nascimento != null) {
+                if (!vencimentoEditadoManualmente &&
+                    emissao != null &&
+                    nascimento != null) {
                   vencimento =
                       _calcularVencimento(emissao!, nascimento!);
                   vencimentoCtrl.text = _fmt(vencimento!);
@@ -191,6 +223,7 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
               }),
 
               _date(vencimentoCtrl, 'Data de vencimento', (v) {
+                vencimentoEditadoManualmente = true;
                 vencimento = _parse(v);
               }),
 
@@ -202,6 +235,16 @@ class _PassportFormScreenState extends State<PassportFormScreen> {
                     RegExp(r'[a-zA-Z0-9]'),
                   ),
                 ],
+                onChanged: (v) {
+                  final upper = v.toUpperCase();
+                  if (upper != v) {
+                    numeroCtrl.value = TextEditingValue(
+                      text: upper,
+                      selection:
+                          TextSelection.collapsed(offset: upper.length),
+                    );
+                  }
+                },
               ),
 
               _field(

@@ -66,3 +66,7 @@ class Journey2EuropeApp extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+ //  flutter emulators --launch Medium_Phone_API_36.1  
+ // ============================================================
