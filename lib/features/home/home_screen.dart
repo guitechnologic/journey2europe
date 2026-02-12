@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
         : 'assets/images/app_background_color.png';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Meus Documentos')),
+      appBar: AppBar(title: const Text('DueTime')),
       body: Stack(
         children: [
           // Background image
