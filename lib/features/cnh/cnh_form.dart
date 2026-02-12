@@ -260,7 +260,7 @@ class _CnhFormScreenState extends State<CnhFormScreen> {
 
               _field(
                 registroCtrl,
-                'Nº de registro',
+                'Nº de Registro',
                 keyboardType:
                     isBrasil ? TextInputType.number : TextInputType.text,
                 inputFormatters: [
