@@ -1,6 +1,6 @@
 {
-    "name": "journey2europe",
-    "short_name": "journey2europe",
+    "name": "journey2europe_temp",
+    "short_name": "journey2europe_temp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
